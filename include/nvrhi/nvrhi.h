@@ -2660,9 +2660,6 @@ namespace nvrhi
 
         BindingSetVector bindings;
 
-        static_vector<VertexBufferBinding, c_MaxVertexAttributes> vertexBuffers;
-        IndexBufferBinding indexBuffer;
-
         IBuffer* indirectParams = nullptr;
 
         GraphicsState& setPipeline(IGraphicsPipeline* value) { pipeline = value; return *this; }
@@ -2672,9 +2669,16 @@ namespace nvrhi
         GraphicsState& setBlendColor(const Color& value) { blendConstantColor = value; return *this; }
         GraphicsState& setDynamicStencilRefValue(uint8_t value) { dynamicStencilRefValue = value; return *this; }
         GraphicsState& addBindingSet(IBindingSet* value) { bindings.push_back(value); return *this; }
-        GraphicsState& addVertexBuffer(const VertexBufferBinding& value) { vertexBuffers.push_back(value); return *this; }
-        GraphicsState& setIndexBuffer(const IndexBufferBinding& value) { indexBuffer = value; return *this; }
         GraphicsState& setIndirectParams(IBuffer* value) { indirectParams = value; return *this; }
+    };
+    
+    struct InputBuffers
+    {
+        static_vector<VertexBufferBinding, c_MaxVertexAttributes> vertexBuffers;
+        IndexBufferBinding indexBuffer;
+        
+        InputBuffers& addVertexBuffer(const VertexBufferBinding& value) { vertexBuffers.push_back(value); return *this; }
+        InputBuffers& setIndexBuffer(const IndexBufferBinding& value) { indexBuffer = value; return *this; }
     };
 
     struct DrawArguments
@@ -3249,6 +3253,8 @@ namespace nvrhi
         // state. To avoid these issues, call clearState() when switching from direct command list access to NVRHI.
         virtual void setGraphicsState(const GraphicsState& state) = 0;
 
+        virtual void setInputBuffers(const InputBuffers& buffers) = 0;
+
         // Draws non-indexed primitivies using the current graphics state.
         // setGraphicsState(...) must be called between opening the command list or using other types of pipelines
         // and calling draw(...) or any of its siblings. If the pipeline uses push constants, those must be set
@@ -3483,6 +3489,8 @@ namespace nvrhi
         // Informs the command list state tracker of the current state of a buffer.
         // See the comment to beginTrackingTextureState(...) for more information.
         virtual void beginTrackingBufferState(IBuffer* buffer, ResourceStates stateBits) = 0;
+
+        NVRHI_API void beginTrackingInputBufferState(const InputBuffers& buffers);
 
         // Places the neccessary barriers to make sure that the texture or some of its subresources are in the given
         // state. If the texture or subresources are already in that state, no action is performed.

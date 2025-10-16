@@ -101,6 +101,7 @@ namespace nvrhi::vulkan
         m_CurrentPushConstantsVisibility = vk::ShaderStageFlagBits();
 
         m_CurrentGraphicsState = GraphicsState();
+        m_CurrentInputBuffers = InputBuffers();
         m_CurrentComputeState = ComputeState();
         m_CurrentMeshletState = MeshletState();
         m_CurrentRayTracingState = rt::State();

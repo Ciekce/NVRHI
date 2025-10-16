@@ -592,34 +592,6 @@ namespace nvrhi::validation
             anyErrors = true;
         }
 
-        if (state.indexBuffer.buffer && !state.indexBuffer.buffer->getDesc().isIndexBuffer)
-        {
-            ss << "Cannot use buffer '" << utils::DebugNameToString(state.indexBuffer.buffer->getDesc().debugName) << "' as an index buffer because it does not have the isIndexBuffer flag set." << std::endl;
-            anyErrors = true;
-        }
-
-        for (size_t index = 0; index < state.vertexBuffers.size(); index++)
-        {
-            const VertexBufferBinding& vb = state.vertexBuffers[index];
-
-            if (!vb.buffer)
-            {
-                ss << "Vertex buffer at index " << index << " is NULL." << std::endl;
-                anyErrors = true;
-            }
-            else if (!vb.buffer->getDesc().isVertexBuffer)
-            {
-                ss << "Buffer '" << utils::DebugNameToString(vb.buffer->getDesc().debugName) << "' bound to vertex buffer slot " << index << " cannot be used as a vertex buffer because it does not have the isVertexBuffer flag set." << std::endl;
-                anyErrors = true;
-            }
-
-            if (vb.slot >= c_MaxVertexAttributes)
-            {
-                ss << "Vertex buffer binding at index " << index << " uses an invalid slot " << vb.slot << "." << std::endl;
-                anyErrors = true;
-            }
-        }
-
         if (state.indirectParams && !state.indirectParams->getDesc().isDrawIndirectArgs)
         {
             ss << "Cannot use buffer '" << utils::DebugNameToString(state.indirectParams->getDesc().debugName) << "' as a DrawIndirect argument buffer because it does not have the isDrawIndirectArgs flag set." << std::endl;
@@ -660,6 +632,58 @@ namespace nvrhi::validation
         m_CurrentGraphicsState = state;
     }
 
+    void CommandListWrapper::setInputBuffers(const InputBuffers& buffers)
+    {
+        bool anyErrors = false;
+        std::stringstream ss;
+        ss << "setInputBuffers: " << std::endl;
+
+        if (!m_GraphicsStateSet)
+        {
+            ss << "Graphics state is not set before setting input buffers.\n"
+                  "Note that setting compute state invalidates the graphics state." << std::endl;
+            anyErrors = true;
+        }
+
+        if (buffers.indexBuffer.buffer && !buffers.indexBuffer.buffer->getDesc().isIndexBuffer)
+        {
+            ss << "Cannot use buffer '" << utils::DebugNameToString(buffers.indexBuffer.buffer->getDesc().debugName) << "' as an index buffer because it does not have the isIndexBuffer flag set." << std::endl;
+            anyErrors = true;
+        }
+
+        for (size_t index = 0; index < buffers.vertexBuffers.size(); index++)
+        {
+            const VertexBufferBinding& vb = buffers.vertexBuffers[index];
+
+            if (!vb.buffer)
+            {
+                ss << "Vertex buffer at index " << index << " is NULL." << std::endl;
+                anyErrors = true;
+            }
+            else if (!vb.buffer->getDesc().isVertexBuffer)
+            {
+                ss << "Buffer '" << utils::DebugNameToString(vb.buffer->getDesc().debugName) << "' bound to vertex buffer slot " << index << " cannot be used as a vertex buffer because it does not have the isVertexBuffer flag set." << std::endl;
+                anyErrors = true;
+            }
+
+            if (vb.slot >= c_MaxVertexAttributes)
+            {
+                ss << "Vertex buffer binding at index " << index << " uses an invalid slot " << vb.slot << "." << std::endl;
+                anyErrors = true;
+            }
+        }
+
+        if (anyErrors)
+        {
+            error(ss.str());
+            return;
+        }
+
+        m_CommandList->setInputBuffers(buffers);
+
+        m_CurrentInputBuffers = buffers;
+    }
+
     void CommandListWrapper::draw(const DrawArguments& args)
     {
         if (!requireOpenState())
@@ -696,7 +720,7 @@ namespace nvrhi::validation
             return;
         }
 
-        if (m_CurrentGraphicsState.indexBuffer.buffer == nullptr)
+        if (m_CurrentInputBuffers.indexBuffer.buffer == nullptr)
         {
             error("Index buffer is not set before a drawIndexed call");
             return;

@@ -206,6 +206,17 @@ namespace nvrhi
                 nvrhi::ResourceStates::ShadingRateSurface);
         }
     }
+
+    void ICommandList::beginTrackingInputBufferState(const InputBuffers& buffers)
+    {
+        for (const auto& binding : buffers.vertexBuffers)
+        {
+            beginTrackingBufferState(binding.buffer, nvrhi::ResourceStates::VertexBuffer);
+        }
+
+        if (buffers.indexBuffer.buffer)
+            beginTrackingBufferState(buffers.indexBuffer.buffer, nvrhi::ResourceStates::IndexBuffer);
+    }
     
     size_t coopvec::getDataTypeSize(coopvec::DataType type)
     {

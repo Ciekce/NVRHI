@@ -87,19 +87,6 @@ namespace nvrhi::vulkan
             }
         }
 
-        if (state.indexBuffer.buffer && state.indexBuffer.buffer != m_CurrentGraphicsState.indexBuffer.buffer)
-        {
-            requireBufferState(state.indexBuffer.buffer, ResourceStates::IndexBuffer);
-        }
-
-        if (arraysAreDifferent(state.vertexBuffers, m_CurrentGraphicsState.vertexBuffers))
-        {
-            for (const auto& vb : state.vertexBuffers)
-            {
-                requireBufferState(vb.buffer, ResourceStates::VertexBuffer);
-            }
-        }
-
         if (m_CurrentGraphicsState.framebuffer != state.framebuffer)
         {
             setResourceStatesForFramebuffer(state.framebuffer);

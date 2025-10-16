@@ -975,6 +975,7 @@ namespace nvrhi::d3d12
         void setPushConstants(const void* data, size_t byteSize) override;
 
         void setGraphicsState(const GraphicsState& state) override;
+        void setInputBuffers(const InputBuffers& buffers) override;
         void draw(const DrawArguments& args) override;
         void drawIndexed(const DrawArguments& args) override;
         void drawIndirect(uint32_t offsetBytes, uint32_t drawCount) override;
@@ -1073,10 +1074,12 @@ namespace nvrhi::d3d12
         // Cache for user-provided state
 
         GraphicsState m_CurrentGraphicsState;
+        InputBuffers m_CurrentInputBuffers;
         ComputeState m_CurrentComputeState;
         MeshletState m_CurrentMeshletState;
         rt::State m_CurrentRayTracingState;
         bool m_CurrentGraphicsStateValid = false;
+        bool m_CurrentInputBuffersValid = false;
         bool m_CurrentComputeStateValid = false;
         bool m_CurrentMeshletStateValid = false;
         bool m_CurrentRayTracingStateValid = false;

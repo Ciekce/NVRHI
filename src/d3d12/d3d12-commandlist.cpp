@@ -273,6 +273,7 @@ namespace nvrhi::d3d12
     {
         m_AnyVolatileBufferWrites = false;
         m_CurrentGraphicsStateValid = false;
+        m_CurrentInputBuffersValid = false;
         m_CurrentComputeStateValid = false;
         m_CurrentMeshletStateValid = false;
         m_CurrentRayTracingStateValid = false;

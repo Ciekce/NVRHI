@@ -319,9 +319,6 @@ namespace nvrhi::d3d12
             ? state.dynamicStencilRefValue
             : pso->desc.renderState.depthStencilState.stencilRefValue;
         const bool updateStencilRef = !m_CurrentGraphicsStateValid || m_CurrentGraphicsState.dynamicStencilRefValue != effectiveStencilRefValue;
-        
-        const bool updateIndexBuffer = !m_CurrentGraphicsStateValid || m_CurrentGraphicsState.indexBuffer != state.indexBuffer;
-        const bool updateVertexBuffers = !m_CurrentGraphicsStateValid || arraysAreDifferent(m_CurrentGraphicsState.vertexBuffers, state.vertexBuffers);
 
         const bool updateShadingRate = !m_CurrentGraphicsStateValid || m_CurrentGraphicsState.shadingRateState != state.shadingRateState;
 
@@ -358,68 +355,6 @@ namespace nvrhi::d3d12
         }
 
         setGraphicsBindings(state.bindings, bindingUpdateMask, state.indirectParams, updateIndirectParams, pso->rootSignature);
-
-        if (updateIndexBuffer)
-        {
-            D3D12_INDEX_BUFFER_VIEW IBV = {};
-
-            if (state.indexBuffer.buffer)
-            {
-                Buffer* buffer = checked_cast<Buffer*>(state.indexBuffer.buffer);
-
-                if (m_EnableAutomaticBarriers)
-                {
-                    requireBufferState(buffer, ResourceStates::IndexBuffer);
-                }
-
-                IBV.Format = getDxgiFormatMapping(state.indexBuffer.format).srvFormat;
-                IBV.SizeInBytes = (UINT)(buffer->desc.byteSize - state.indexBuffer.offset);
-                IBV.BufferLocation = buffer->gpuVA + state.indexBuffer.offset;
-
-                m_Instance->referencedResources.push_back(state.indexBuffer.buffer);
-            }
-
-            m_ActiveCommandList->commandList->IASetIndexBuffer(&IBV);
-        }
-
-        if (updateVertexBuffers)
-        {
-            D3D12_VERTEX_BUFFER_VIEW VBVs[c_MaxVertexAttributes] = {};
-            uint32_t maxVbIndex = 0;
-            InputLayout* inputLayout = checked_cast<InputLayout*>(pso->desc.inputLayout.Get());
-
-            for (const VertexBufferBinding& binding : state.vertexBuffers)
-            {
-                Buffer* buffer = checked_cast<Buffer*>(binding.buffer);
-
-                if (m_EnableAutomaticBarriers)
-                {
-                    requireBufferState(buffer, ResourceStates::VertexBuffer);
-                }
-
-                // This is tested by the validation layer, skip invalid slots here if VL is not used.
-                if (binding.slot >= c_MaxVertexAttributes)
-                    continue;
-
-                VBVs[binding.slot].StrideInBytes = inputLayout->elementStrides[binding.slot];
-                VBVs[binding.slot].SizeInBytes = (UINT)(std::min(buffer->desc.byteSize - binding.offset, (uint64_t)ULONG_MAX));
-                VBVs[binding.slot].BufferLocation = buffer->gpuVA + binding.offset;
-                maxVbIndex = std::max(maxVbIndex, binding.slot);
-
-                m_Instance->referencedResources.push_back(buffer);
-            }
-
-            if (m_CurrentGraphicsStateValid)
-            {
-                for (const VertexBufferBinding& binding : m_CurrentGraphicsState.vertexBuffers)
-                {
-                    if (binding.slot < c_MaxVertexAttributes)
-                        maxVbIndex = std::max(maxVbIndex, binding.slot);
-                }
-            }
-
-            m_ActiveCommandList->commandList->IASetVertexBuffers(0, maxVbIndex + 1, VBVs);
-        }
 
         if (updateShadingRate || updateFramebuffer)
         {
@@ -498,6 +433,72 @@ namespace nvrhi::d3d12
         m_CurrentRayTracingStateValid = false;
         m_CurrentGraphicsState = state;
         m_CurrentGraphicsState.dynamicStencilRefValue = effectiveStencilRefValue;
+    }
+
+    void CommandList::setInputBuffers(const nvrhi::InputBuffers& buffers)
+    {
+        assert(m_CurrentGraphicsStateValid);
+
+        const bool updateIndexBuffer = !m_CurrentInputBuffersValid || m_CurrentInputBuffers.indexBuffer != buffers.indexBuffer;
+        const bool updateVertexBuffers = !m_CurrentInputBuffersValid || arraysAreDifferent(m_CurrentInputBuffers.vertexBuffers, buffers.vertexBuffers);
+
+        if (updateIndexBuffer)
+        {
+            D3D12_INDEX_BUFFER_VIEW IBV = {};
+
+            if (buffers.indexBuffer.buffer)
+            {
+                Buffer* buffer = checked_cast<Buffer*>(buffers.indexBuffer.buffer);
+
+                IBV.Format = getDxgiFormatMapping(buffers.indexBuffer.format).srvFormat;
+                IBV.SizeInBytes = (UINT)(buffer->desc.byteSize - buffers.indexBuffer.offset);
+                IBV.BufferLocation = buffer->gpuVA + buffers.indexBuffer.offset;
+
+                m_Instance->referencedResources.push_back(buffers.indexBuffer.buffer);
+            }
+
+            m_ActiveCommandList->commandList->IASetIndexBuffer(&IBV);
+        }
+
+        if (updateVertexBuffers)
+        {
+            D3D12_VERTEX_BUFFER_VIEW VBVs[c_MaxVertexAttributes] = {};
+            uint32_t maxVbIndex = 0;
+            GraphicsPipeline* pso = checked_cast<GraphicsPipeline*>(m_CurrentGraphicsState.pipeline);
+            InputLayout* inputLayout = checked_cast<InputLayout*>(pso->desc.inputLayout.Get());
+
+            for (const VertexBufferBinding& binding : buffers.vertexBuffers)
+            {
+                Buffer* buffer = checked_cast<Buffer*>(binding.buffer);
+
+                if (m_EnableAutomaticBarriers)
+                {
+                    requireBufferState(buffer, ResourceStates::VertexBuffer);
+                }
+
+                // This is tested by the validation layer, skip invalid slots here if VL is not used.
+                if (binding.slot >= c_MaxVertexAttributes)
+                    continue;
+
+                VBVs[binding.slot].StrideInBytes = inputLayout->elementStrides[binding.slot];
+                VBVs[binding.slot].SizeInBytes = (UINT)(std::min(buffer->desc.byteSize - binding.offset, (uint64_t)ULONG_MAX));
+                VBVs[binding.slot].BufferLocation = buffer->gpuVA + binding.offset;
+                maxVbIndex = std::max(maxVbIndex, binding.slot);
+
+                m_Instance->referencedResources.push_back(buffer);
+            }
+
+            if (m_CurrentInputBuffersValid)
+            {
+                for (const VertexBufferBinding& binding : m_CurrentInputBuffers.vertexBuffers)
+                {
+                    if (binding.slot < c_MaxVertexAttributes)
+                        maxVbIndex = std::max(maxVbIndex, binding.slot);
+                }
+            }
+
+            m_ActiveCommandList->commandList->IASetVertexBuffers(0, maxVbIndex + 1, VBVs);
+        }
     }
 
     void CommandList::unbindShadingRateState()

@@ -601,38 +601,6 @@ namespace nvrhi::vulkan
             m_CurrentCmdBuf->cmdBuf.setBlendConstants(&state.blendConstantColor.r);
         }
 
-        if (state.indexBuffer.buffer && m_CurrentGraphicsState.indexBuffer != state.indexBuffer)
-        {
-            m_CurrentCmdBuf->cmdBuf.bindIndexBuffer(checked_cast<Buffer*>(state.indexBuffer.buffer)->buffer,
-                state.indexBuffer.offset,
-                state.indexBuffer.format == Format::R16_UINT ?
-                vk::IndexType::eUint16 : vk::IndexType::eUint32);
-
-            m_CurrentCmdBuf->referencedResources.push_back(state.indexBuffer.buffer);
-        }
-
-        if (!state.vertexBuffers.empty() && arraysAreDifferent(state.vertexBuffers, m_CurrentGraphicsState.vertexBuffers))
-        {
-            vk::Buffer vertexBuffers[c_MaxVertexAttributes];
-            vk::DeviceSize vertexBufferOffsets[c_MaxVertexAttributes];
-            uint32_t maxVbIndex = 0;
-
-            for (const auto& binding : state.vertexBuffers)
-            {
-                // This is tested by the validation layer, skip invalid slots here if VL is not used.
-                if (binding.slot >= c_MaxVertexAttributes)
-                    continue;
-
-                vertexBuffers[binding.slot] = checked_cast<Buffer*>(binding.buffer)->buffer;
-                vertexBufferOffsets[binding.slot] = vk::DeviceSize(binding.offset);
-                maxVbIndex = std::max(maxVbIndex, binding.slot);
-
-                m_CurrentCmdBuf->referencedResources.push_back(binding.buffer);
-            }
-
-            m_CurrentCmdBuf->cmdBuf.bindVertexBuffers(0, maxVbIndex + 1, vertexBuffers, vertexBufferOffsets);
-        }
-
         if (state.indirectParams)
         {
             m_CurrentCmdBuf->referencedResources.push_back(state.indirectParams);
@@ -650,6 +618,43 @@ namespace nvrhi::vulkan
         m_CurrentMeshletState = MeshletState();
         m_CurrentRayTracingState = rt::State();
         m_AnyVolatileBufferWrites = false;
+    }
+
+    void CommandList::setInputBuffers(const InputBuffers& buffers)
+    {
+        if (buffers.indexBuffer.buffer && m_CurrentInputBuffers.indexBuffer != buffers.indexBuffer)
+        {
+            m_CurrentCmdBuf->cmdBuf.bindIndexBuffer(checked_cast<Buffer*>(buffers.indexBuffer.buffer)->buffer,
+                buffers.indexBuffer.offset,
+                buffers.indexBuffer.format == Format::R16_UINT ?
+                vk::IndexType::eUint16 : vk::IndexType::eUint32);
+
+            m_CurrentCmdBuf->referencedResources.push_back(buffers.indexBuffer.buffer);
+        }
+
+        if (!buffers.vertexBuffers.empty() && arraysAreDifferent(buffers.vertexBuffers, m_CurrentInputBuffers.vertexBuffers))
+        {
+            vk::Buffer vertexBuffers[c_MaxVertexAttributes];
+            vk::DeviceSize vertexBufferOffsets[c_MaxVertexAttributes];
+            uint32_t maxVbIndex = 0;
+
+            for (const auto& binding : buffers.vertexBuffers)
+            {
+                // This is tested by the validation layer, skip invalid slots here if VL is not used.
+                if (binding.slot >= c_MaxVertexAttributes)
+                    continue;
+
+                vertexBuffers[binding.slot] = checked_cast<Buffer*>(binding.buffer)->buffer;
+                vertexBufferOffsets[binding.slot] = vk::DeviceSize(binding.offset);
+                maxVbIndex = std::max(maxVbIndex, binding.slot);
+
+                m_CurrentCmdBuf->referencedResources.push_back(binding.buffer);
+            }
+
+            m_CurrentCmdBuf->cmdBuf.bindVertexBuffers(0, maxVbIndex + 1, vertexBuffers, vertexBufferOffsets);
+        }
+
+        m_CurrentInputBuffers = buffers;
     }
 
     void CommandList::updateGraphicsVolatileBuffers()
