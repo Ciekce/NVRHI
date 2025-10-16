@@ -2229,7 +2229,7 @@ namespace nvrhi::validation
     uint64_t DeviceWrapper::executeCommandLists(ICommandList* const* pCommandLists, size_t numCommandLists, CommandQueue executionQueue)
     {
         if (numCommandLists == 0)
-            return 0;
+            return m_Device->executeCommandLists(nullptr, 0, executionQueue);
 
         if (pCommandLists == nullptr)
         {
