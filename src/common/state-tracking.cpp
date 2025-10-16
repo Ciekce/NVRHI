@@ -152,6 +152,9 @@ namespace nvrhi
 
     ResourceStates CommandListResourceStateTracker::getBufferState(BufferStateExtension* buffer)
     {
+        if (buffer->permanentState != ResourceStates::Unknown)
+            return buffer->permanentState;
+
         BufferState* tracking = getBufferStateTracking(buffer, false);
 
         if (!tracking)
@@ -443,7 +446,9 @@ namespace nvrhi
 
         BufferState* tracking = trackingRef.get();
         m_BufferStates.insert(std::make_pair(buffer, std::move(trackingRef)));
-                                                   
+
+        tracking->state = buffer->permanentState;
+
         if (buffer->descRef.keepInitialState)
         {
             tracking->state = buffer->descRef.initialState;

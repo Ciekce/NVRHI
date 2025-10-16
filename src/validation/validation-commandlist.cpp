@@ -634,6 +634,12 @@ namespace nvrhi::validation
 
     void CommandListWrapper::setInputBuffers(const InputBuffers& buffers)
     {
+        if (!requireOpenState())
+            return;
+
+        if (!requireType(CommandQueue::Graphics, "setInputBuffers"))
+            return;
+
         bool anyErrors = false;
         std::stringstream ss;
         ss << "setInputBuffers: " << std::endl;
@@ -645,10 +651,20 @@ namespace nvrhi::validation
             anyErrors = true;
         }
 
-        if (buffers.indexBuffer.buffer && !buffers.indexBuffer.buffer->getDesc().isIndexBuffer)
+        if (buffers.indexBuffer.buffer)
         {
-            ss << "Cannot use buffer '" << utils::DebugNameToString(buffers.indexBuffer.buffer->getDesc().debugName) << "' as an index buffer because it does not have the isIndexBuffer flag set." << std::endl;
-            anyErrors = true;
+            if (!buffers.indexBuffer.buffer->getDesc().isIndexBuffer)
+            {
+                ss << "Cannot use buffer '" << utils::DebugNameToString(buffers.indexBuffer.buffer->getDesc().debugName) << "' as an index buffer because it does not have the isIndexBuffer flag set." << std::endl;
+                anyErrors = true;
+            }
+
+            ResourceStates states = getBufferState(buffers.indexBuffer.buffer);
+            if ((states & ResourceStates::IndexBuffer) == 0)
+            {
+                ss << "Cannot use buffer '" << utils::DebugNameToString(buffers.indexBuffer.buffer->getDesc().debugName) << "' as an index buffer because it does not have ResourceStates::IndexBuffer set." << std::endl;
+                anyErrors = true;
+            }
         }
 
         for (size_t index = 0; index < buffers.vertexBuffers.size(); index++)
@@ -660,10 +676,20 @@ namespace nvrhi::validation
                 ss << "Vertex buffer at index " << index << " is NULL." << std::endl;
                 anyErrors = true;
             }
-            else if (!vb.buffer->getDesc().isVertexBuffer)
+            else
             {
-                ss << "Buffer '" << utils::DebugNameToString(vb.buffer->getDesc().debugName) << "' bound to vertex buffer slot " << index << " cannot be used as a vertex buffer because it does not have the isVertexBuffer flag set." << std::endl;
-                anyErrors = true;
+                if (!vb.buffer->getDesc().isVertexBuffer)
+                {
+                    ss << "Buffer '" << utils::DebugNameToString(vb.buffer->getDesc().debugName) << "' bound to vertex buffer slot " << index << " cannot be used as a vertex buffer because it does not have the isVertexBuffer flag set." << std::endl;
+                    anyErrors = true;
+                }
+
+                ResourceStates states = m_CommandList->getBufferState(vb.buffer);
+                if ((states & ResourceStates::VertexBuffer) == 0)
+                {
+                    ss << "Buffer '" << utils::DebugNameToString(vb.buffer->getDesc().debugName) << "' bound to vertex buffer slot " << index << " cannot be used as a vertex buffer because it does not have ResourceStates::VertexBuffer set." << std::endl;
+                    anyErrors = true;
+                }
             }
 
             if (vb.slot >= c_MaxVertexAttributes)
