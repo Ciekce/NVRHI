@@ -188,7 +188,7 @@ namespace nvrhi
         {
             // We're requiring state for the entire texture, and it's been tracked as entire texture too
 
-            bool transitionNecessary = tracking->state != state;
+            bool transitionNecessary = (state & ~tracking->state) != 0;
             bool uavNecessary = ((state & ResourceStates::UnorderedAccess) != 0)
                 && (tracking->enableUavBarriers || !tracking->firstUavBarrierPlaced);
 
@@ -198,11 +198,14 @@ namespace nvrhi
                 barrier.texture = texture;
                 barrier.entireTexture = true;
                 barrier.stateBefore = tracking->state;
-                barrier.stateAfter = state;
+                barrier.stateAfter = transitionNecessary ? state : tracking->state;
                 m_TextureBarriers.push_back(barrier);
             }
 
-            tracking->state = state;
+            if (transitionNecessary)
+            {
+                tracking->state = state;
+            }
 
             if (uavNecessary && !transitionNecessary)
             {
@@ -242,7 +245,7 @@ namespace nvrhi
                         m_MessageCallback->message(MessageSeverity::Error, ss.str().c_str());
                     }
                     
-                    bool transitionNecessary = priorState != state;
+                    bool transitionNecessary = (state & ~priorState) != 0;
                     bool uavNecessary = ((state & ResourceStates::UnorderedAccess) != 0)
                         && !anyUavBarrier && (tracking->enableUavBarriers || !tracking->firstUavBarrierPlaced);
 
@@ -254,11 +257,14 @@ namespace nvrhi
                         barrier.mipLevel = mipLevel;
                         barrier.arraySlice = arraySlice;
                         barrier.stateBefore = priorState;
-                        barrier.stateAfter = state;
+                        barrier.stateAfter = transitionNecessary ? state : priorState;
                         m_TextureBarriers.push_back(barrier);
                     }
 
-                    tracking->subresourceStates[subresourceIndex] = state;
+                    if (transitionNecessary)
+                    {
+                        tracking->subresourceStates[subresourceIndex] = state;
+                    }
 
                     if (uavNecessary && !transitionNecessary)
                     {

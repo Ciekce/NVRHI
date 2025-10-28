@@ -385,10 +385,12 @@ namespace nvrhi::vulkan
                 const auto textureViewType = getTextureViewType(binding.format, texture->desc.format);
                 auto& view = texture->getSubresourceView(subresource, binding.dimension, binding.format, vk::ImageUsageFlagBits::eSampled, textureViewType);
 
+                const FormatInfo& formatInfo = getFormatInfo(texture->desc.format);
+
                 auto& imageInfo = descriptorImageInfo.emplace_back();
                 imageInfo = vk::DescriptorImageInfo()
                     .setImageView(view.view)
-                    .setImageLayout(vk::ImageLayout::eShaderReadOnlyOptimal);
+                    .setImageLayout(formatInfo.hasDepth ? vk::ImageLayout::eDepthStencilReadOnlyOptimal : vk::ImageLayout::eShaderReadOnlyOptimal);
 
                 generateWriteDescriptorData(
                     registerOffset + binding.slot,

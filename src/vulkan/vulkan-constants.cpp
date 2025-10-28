@@ -277,7 +277,7 @@ namespace nvrhi::vulkan
             vk::ImageLayout::eDepthStencilAttachmentOptimal },
         { ResourceStates::DepthRead,
             vk::PipelineStageFlagBits2::eEarlyFragmentTests | vk::PipelineStageFlagBits2::eLateFragmentTests,
-            vk::AccessFlagBits2::eDepthStencilAttachmentRead,
+             vk::AccessFlagBits2::eDepthStencilAttachmentRead | vk::AccessFlagBits2::eShaderRead,
             vk::ImageLayout::eDepthStencilReadOnlyOptimal },
         { ResourceStates::StreamOut,
             vk::PipelineStageFlagBits2::eTransformFeedbackEXT,
@@ -359,7 +359,8 @@ namespace nvrhi::vulkan
                 const ResourceStateMappingInternal& mapping = g_ResourceStateMap[bitIndex];
 
                 assert(uint32_t(mapping.nvrhiState) == bit);
-                assert(result.imageLayout == vk::ImageLayout::eUndefined || mapping.imageLayout == vk::ImageLayout::eUndefined || result.imageLayout == mapping.imageLayout);
+                // horrible hack - ResourceStates::DepthRead is a higher bit than ResourceStates::ShaderResource, so it correctly overrides the layout
+                assert(result.imageLayout == vk::ImageLayout::eUndefined || mapping.imageLayout == vk::ImageLayout::eUndefined || result.imageLayout == mapping.imageLayout || (result.imageLayout == vk::ImageLayout::eShaderReadOnlyOptimal && mapping.imageLayout == vk::ImageLayout::eDepthStencilReadOnlyOptimal));
 
                 result.nvrhiState = ResourceStates(result.nvrhiState | mapping.nvrhiState);
                 result.accessMask |= mapping.accessMask;
