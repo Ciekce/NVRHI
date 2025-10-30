@@ -448,8 +448,6 @@ namespace nvrhi::vulkan
 
         assert(m_CurrentCmdBuf);
 
-        endRenderPass();
-
         m_CurrentCmdBuf->referencedResources.push_back(buffer);
 
         if (buffer->desc.isVolatile)
